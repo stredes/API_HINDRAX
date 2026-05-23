@@ -25,7 +25,8 @@ Para publicar este backend en internet cambia `API_TOKEN` por un valor largo y p
 
 ## Endpoints
 
-- `GET /health`: estado publico del servidor.
+- `GET /` y `GET /health`: estado publico del servidor.
+- `GET /api/v1/status`: estado protegido de la API. Responde `status: "online"` aunque la persistencia remota este pendiente.
 - `GET /api/v1/tasks?updatedAfter=0`: lista tareas modificadas despues del cursor.
 - `PUT /api/v1/tasks/:id`: crea o reemplaza una tarea por id.
 - `POST /api/v1/tasks/sync`: sincroniza varias tareas.

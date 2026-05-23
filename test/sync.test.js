@@ -26,7 +26,21 @@ describe("Hindrax remote sync API", () => {
   it("exposes a public health endpoint", async () => {
     const response = await request(app).get("/health").expect(200);
 
-    expect(response.body).toMatchObject({ ok: true, service: "api-hindrax" });
+    expect(response.body).toMatchObject({
+      ok: true,
+      status: "online",
+      service: "api-hindrax"
+    });
+  });
+
+  it("exposes a public root status endpoint for browser checks", async () => {
+    const response = await request(app).get("/").expect(200);
+
+    expect(response.body).toMatchObject({
+      ok: true,
+      status: "online",
+      service: "api-hindrax"
+    });
   });
 
   it("rejects sync requests without the bearer token", async () => {
@@ -55,7 +69,27 @@ describe("Hindrax remote sync API", () => {
       apiToken: TOKEN
     });
 
-    await request(unavailableApp).get("/health").expect(200);
+    const health = await request(unavailableApp).get("/health").expect(200);
+    expect(health.body).toMatchObject({
+      ok: true,
+      status: "online",
+      storage: {
+        status: "config_pending"
+      }
+    });
+
+    const status = await request(unavailableApp)
+      .get("/api/v1/status")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(200);
+    expect(status.body).toMatchObject({
+      ok: true,
+      status: "online",
+      storage: {
+        status: "config_pending",
+        message: "Persistent storage is not configured"
+      }
+    });
 
     const response = await request(unavailableApp)
       .get("/api/v1/tasks")

@@ -1,6 +1,7 @@
 export class ConfigErrorStore {
   constructor(message) {
     this.message = message;
+    this.storageStatus = "config_pending";
   }
 
   fail() {

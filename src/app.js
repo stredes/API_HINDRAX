@@ -68,6 +68,21 @@ async function syncItemsWithSummary(items, schema, upsert) {
   };
 }
 
+function getServiceStatus(store) {
+  const isStoragePending = store.storageStatus === "config_pending";
+
+  return {
+    ok: true,
+    status: "online",
+    service: "api-hindrax",
+    storage: {
+      status: isStoragePending ? "config_pending" : "ready",
+      message: isStoragePending ? store.message : undefined
+    },
+    serverTime: Date.now()
+  };
+}
+
 export function createApp({ store, apiToken, corsOrigin = "*" }) {
   const app = express();
 
@@ -78,15 +93,15 @@ export function createApp({ store, apiToken, corsOrigin = "*" }) {
     app.use(morgan("tiny"));
   }
 
-  app.get("/health", (_request, response) => {
-    response.json({
-      ok: true,
-      service: "api-hindrax",
-      serverTime: Date.now()
-    });
+  app.get(["/", "/health"], (_request, response) => {
+    response.json(getServiceStatus(store));
   });
 
   app.use("/api/v1", requireBearerToken(apiToken));
+
+  app.get("/api/v1/status", (_request, response) => {
+    response.json(getServiceStatus(store));
+  });
 
   app.get(
     "/api/v1/tasks",
