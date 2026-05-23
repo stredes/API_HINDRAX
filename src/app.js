@@ -3,6 +3,7 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { requireBearerToken } from "./auth.js";
+import { createCorsOptions } from "./corsConfig.js";
 import { asyncRoute, sendError } from "./http.js";
 import {
   deviceSchema,
@@ -48,7 +49,7 @@ export function createApp({ store, apiToken, corsOrigin = "*" }) {
   const app = express();
 
   app.use(helmet());
-  app.use(cors({ origin: corsOrigin }));
+  app.use(cors(createCorsOptions({ origin: corsOrigin })));
   app.use(express.json({ limit: "1mb" }));
   if (process.env.NODE_ENV !== "test") {
     app.use(morgan("tiny"));

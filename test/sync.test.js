@@ -34,6 +34,20 @@ describe("Hindrax remote sync API", () => {
     expect(response.body).toMatchObject({ error: "Unauthorized" });
   });
 
+  it("allows mobile/browser preflight requests with auth and json headers", async () => {
+    const response = await request(app)
+      .options("/api/v1/devices/heartbeat")
+      .set("Origin", "capacitor://localhost")
+      .set("Access-Control-Request-Method", "POST")
+      .set("Access-Control-Request-Headers", "authorization,content-type")
+      .expect(204);
+
+    expect(response.headers["access-control-allow-origin"]).toBe("capacitor://localhost");
+    expect(response.headers["access-control-allow-methods"]).toContain("POST");
+    expect(response.headers["access-control-allow-headers"]).toContain("Authorization");
+    expect(response.headers["access-control-allow-headers"]).toContain("Content-Type");
+  });
+
   it("syncs tasks and returns them through the updatedAfter cursor", async () => {
     const task = {
       id: "task-001",

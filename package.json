@@ -6,12 +6,14 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "node src/server.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "firestore:seed": "firebase projects:list --json > /dev/null && node scripts/upload-firestore-seed.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^5.1.0",
+    "firebase": "^12.13.0",
     "helmet": "^8.1.0",
     "morgan": "^1.10.0",
     "pg": "^8.21.0",
