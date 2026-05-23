@@ -6,19 +6,30 @@ describe("store factory", () => {
     const store = createStore({
       dataFile: "/tmp/hindrax-test.json",
       databaseUrl: "",
+      useFirestore: false,
       isVercel: false
     });
 
     expect(store.constructor.name).toBe("JsonStore");
   });
 
-  it("requires DATABASE_URL on Vercel because serverless files are not persistent", () => {
+  it("does not crash the serverless function when persistent storage is missing", () => {
     expect(() =>
       createStore({
         dataFile: "/tmp/hindrax-test.json",
         databaseUrl: "",
+        useFirestore: false,
         isVercel: true
       })
-    ).toThrow("DATABASE_URL");
+    ).not.toThrow();
+
+    const store = createStore({
+      dataFile: "/tmp/hindrax-test.json",
+      databaseUrl: "",
+      useFirestore: false,
+      isVercel: true
+    });
+
+    expect(store.constructor.name).toBe("ConfigErrorStore");
   });
 });

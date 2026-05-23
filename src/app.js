@@ -147,6 +147,10 @@ export function createApp({ store, apiToken, corsOrigin = "*" }) {
       sendError(response, 422, "ValidationError", "Request validation failed", error.details);
       return;
     }
+    if (error.status === 503) {
+      sendError(response, 503, "ServerConfigError", error.publicMessage ?? error.message);
+      return;
+    }
     sendError(response, 500, "InternalServerError", error.message);
   });
 

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
+import { ConfigErrorStore } from "../src/configErrorStore.js";
 import { JsonStore } from "../src/store.js";
 
 const TOKEN = "test-token";
@@ -46,6 +47,22 @@ describe("Hindrax remote sync API", () => {
     expect(response.headers["access-control-allow-methods"]).toContain("POST");
     expect(response.headers["access-control-allow-headers"]).toContain("Authorization");
     expect(response.headers["access-control-allow-headers"]).toContain("Content-Type");
+  });
+
+  it("keeps health alive when persistent storage is not configured", async () => {
+    const unavailableApp = createApp({
+      store: new ConfigErrorStore("Persistent storage is not configured"),
+      apiToken: TOKEN
+    });
+
+    await request(unavailableApp).get("/health").expect(200);
+
+    const response = await request(unavailableApp)
+      .get("/api/v1/tasks")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(503);
+
+    expect(response.body).toMatchObject({ error: "ServerConfigError" });
   });
 
   it("syncs tasks and returns them through the updatedAfter cursor", async () => {
