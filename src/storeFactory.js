@@ -15,7 +15,13 @@ export function createStore({
   }
 
   if (useFirestore) {
-    return new FirestoreStore();
+    try {
+      return new FirestoreStore();
+    } catch (error) {
+      return new ConfigErrorStore(
+        `Firestore storage is not configured correctly: ${error.message}`
+      );
+    }
   }
 
   if (isVercel) {
