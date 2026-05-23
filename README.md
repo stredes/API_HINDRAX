@@ -243,6 +243,16 @@ En Vercel configura estas variables de entorno:
 - `PGSSLMODE=require`: usa SSL para el proveedor de base de datos si usas Postgres.
 - `CORS_ORIGIN=*`: permite llamadas desde la app movil.
 
+`FIREBASE_SERVICE_ACCOUNT_JSON` debe venir desde Firebase Console > Project settings > Service accounts > Generate new private key. No uses la configuracion web de Firebase, porque esa no trae `client_email` ni `private_key`.
+
+El backend acepta el JSON literal o codificado en base64. Tambien normaliza campos comunes de paneles de entorno:
+
+- `projectId` -> `project_id`
+- `clientEmail` -> `client_email`
+- `privateKey` -> `private_key`
+
+Si el JSON no trae `project_id`, la API usa `FIREBASE_PROJECT_ID` como respaldo.
+
 El archivo `vercel.json` enruta todo hacia `api/index.js`, que exporta la app Express como funcion serverless.
 
 Despues del despliegue valida:

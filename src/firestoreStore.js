@@ -15,9 +15,25 @@ function byUpdatedAtThenId(left, right) {
   return left.id.localeCompare(right.id);
 }
 
-function parseServiceAccount(value) {
+export function parseServiceAccount(value, projectId = process.env.FIREBASE_PROJECT_ID) {
   if (!value) return null;
-  const parsed = JSON.parse(value);
+  const rawValue = value.trim();
+  const decodedValue = rawValue.startsWith("{")
+    ? rawValue
+    : Buffer.from(rawValue, "base64").toString("utf8");
+  const parsed = JSON.parse(decodedValue);
+  if (!parsed.project_id && parsed.projectId) {
+    parsed.project_id = parsed.projectId;
+  }
+  if (!parsed.client_email && parsed.clientEmail) {
+    parsed.client_email = parsed.clientEmail;
+  }
+  if (!parsed.private_key && parsed.privateKey) {
+    parsed.private_key = parsed.privateKey;
+  }
+  if (!parsed.project_id && projectId) {
+    parsed.project_id = projectId;
+  }
   if (parsed.private_key) {
     parsed.private_key = parsed.private_key.replace(/\\n/g, "\n");
   }
@@ -26,7 +42,8 @@ function parseServiceAccount(value) {
 
 function createCredential() {
   const serviceAccount = parseServiceAccount(
-    process.env.FIREBASE_SERVICE_ACCOUNT_JSON ?? process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+    process.env.FIREBASE_SERVICE_ACCOUNT_JSON ?? process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
+    process.env.FIREBASE_PROJECT_ID ?? "hindrax"
   );
 
   if (serviceAccount) {
