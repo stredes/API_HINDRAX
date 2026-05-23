@@ -7,6 +7,7 @@ import { createCorsOptions } from "./corsConfig.js";
 import { asyncRoute, sendError } from "./http.js";
 import {
   bootstrapSchema,
+  chatMessageSchema,
   deviceSchema,
   inventorySchema,
   parseUpdatedAfter,
@@ -154,6 +155,26 @@ export function createApp({ store, apiToken, corsOrigin = "*" }) {
       const body = parseBody(syncSchema, request.body);
       const items = await syncItems(body.items, inventorySchema, (item) =>
         store.upsertInventory(item)
+      );
+      response.json({ items, serverTime: Date.now() });
+    })
+  );
+
+  app.get(
+    "/api/v1/chat",
+    asyncRoute(async (request, response) => {
+      const updatedAfter = parseUpdatedAfter(request.query.updatedAfter);
+      const items = await store.listChatMessages({ updatedAfter });
+      response.json({ items, serverTime: Date.now() });
+    })
+  );
+
+  app.post(
+    "/api/v1/chat/sync",
+    asyncRoute(async (request, response) => {
+      const body = parseBody(syncSchema, request.body);
+      const items = await syncItems(body.items, chatMessageSchema, (item) =>
+        store.upsertChatMessage(item)
       );
       response.json({ items, serverTime: Date.now() });
     })

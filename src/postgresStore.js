@@ -61,6 +61,14 @@ export class PostgresStore {
     });
   }
 
+  async upsertChatMessage(message) {
+    return this.upsert("chat", message);
+  }
+
+  async listChatMessages({ updatedAfter = 0 } = {}) {
+    return this.list("chat", updatedAfter);
+  }
+
   async listDevices() {
     return this.list("devices", 0);
   }

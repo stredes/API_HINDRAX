@@ -5,7 +5,8 @@ function emptyData() {
   return {
     tasks: {},
     inventory: {},
-    devices: {}
+    devices: {},
+    chat: {}
   };
 }
 
@@ -21,6 +22,10 @@ function byUpdatedAtThenId(left, right) {
     return left.updatedAt - right.updatedAt;
   }
   return left.id.localeCompare(right.id);
+}
+
+function isValidSyncRecord(item) {
+  return item && typeof item.id === "string" && item.id.trim().length > 0;
 }
 
 export class JsonStore {
@@ -82,6 +87,14 @@ export class JsonStore {
     });
   }
 
+  async upsertChatMessage(message) {
+    return this.upsert("chat", message);
+  }
+
+  async listChatMessages({ updatedAfter = 0 } = {}) {
+    return this.list("chat", updatedAfter);
+  }
+
   async listDevices() {
     const data = await this.read();
     return Object.values(data.devices).sort(byUpdatedAtThenId);
@@ -102,6 +115,7 @@ export class JsonStore {
   async list(collection, updatedAfter) {
     const data = await this.read();
     return Object.values(data[collection])
+      .filter(isValidSyncRecord)
       .filter((item) => item.updatedAt > updatedAfter)
       .sort(byUpdatedAtThenId);
   }

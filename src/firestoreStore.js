@@ -72,6 +72,10 @@ function fromSnapshot(snapshot) {
   return snapshot.data();
 }
 
+function isValidSyncRecord(item) {
+  return item && typeof item.id === "string" && item.id.trim().length > 0;
+}
+
 export function hasFirestoreConfig(env = process.env) {
   return Boolean(
     env.FIREBASE_SERVICE_ACCOUNT_JSON ||
@@ -108,6 +112,14 @@ export class FirestoreStore {
     });
   }
 
+  async upsertChatMessage(message) {
+    return this.upsert("chat", message);
+  }
+
+  async listChatMessages({ updatedAfter = 0 } = {}) {
+    return this.list("chat", updatedAfter);
+  }
+
   async listDevices() {
     const response = await this.db.collection("devices").get();
     return response.docs.map(fromSnapshot).sort(byUpdatedAtThenId);
@@ -136,6 +148,6 @@ export class FirestoreStore {
       .where("updatedAt", ">", updatedAfter)
       .get();
 
-    return response.docs.map(fromSnapshot).sort(byUpdatedAtThenId);
+    return response.docs.map(fromSnapshot).filter(isValidSyncRecord).sort(byUpdatedAtThenId);
   }
 }

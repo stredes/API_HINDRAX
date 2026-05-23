@@ -234,6 +234,31 @@ describe("Hindrax remote sync API", () => {
     expect(response.body.items).toEqual([item]);
   });
 
+  it("syncs chat messages and lets other devices pull them", async () => {
+    const message = {
+      id: "HNDX-phone-a-chat-1000-HNDX-phone-b",
+      deviceId: "HNDX-phone-a",
+      peerId: "HNDX-phone-b",
+      message: "Mensaje remoto",
+      isFromMe: true,
+      timestamp: 1000,
+      updatedAt: 1000
+    };
+
+    await request(app)
+      .post("/api/v1/chat/sync")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({ items: [message] })
+      .expect(200);
+
+    const response = await request(app)
+      .get("/api/v1/chat?updatedAfter=999")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(200);
+
+    expect(response.body.items).toEqual([message]);
+  });
+
   it("bootstraps all local data from a device in one request", async () => {
     const payload = {
       device: {

@@ -45,6 +45,17 @@ export const deviceSchema = z.object({
   updatedAt: timestamp
 });
 
+export const chatMessageSchema = z.object({
+  id: z.string().trim().min(1).optional(),
+  deviceId: z.string().trim().min(1),
+  peerId: z.string().trim().min(1),
+  message: z.string(),
+  isFromMe: z.boolean().default(true),
+  status: optionalText,
+  timestamp: timestamp,
+  updatedAt: timestamp
+});
+
 export const syncSchema = z.object({
   items: z.array(z.record(z.unknown())).default([])
 });
