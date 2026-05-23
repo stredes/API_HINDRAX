@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const optionalText = z.string().trim().optional();
+const optionalTextOrNumber = z.union([z.string().trim(), z.coerce.number()]).optional();
 const timestamp = z.coerce.number().int().nonnegative().optional();
 
 export const taskSchema = z.object({
@@ -16,7 +17,7 @@ export const taskSchema = z.object({
   longitude: z.coerce.number().min(-180).max(180).optional(),
   quantity: z.coerce.number().nonnegative().optional(),
   unit: optionalText,
-  inventoryItemId: optionalText,
+  inventoryItemId: optionalTextOrNumber,
   assignedPeerId: optionalText,
   checklist: z.array(z.unknown()).optional(),
   deleted: z.boolean().optional(),
@@ -46,6 +47,12 @@ export const deviceSchema = z.object({
 
 export const syncSchema = z.object({
   items: z.array(z.record(z.unknown())).default([])
+});
+
+export const bootstrapSchema = z.object({
+  device: z.record(z.unknown()).optional(),
+  tasks: z.array(z.record(z.unknown())).default([]),
+  inventory: z.array(z.record(z.unknown())).default([])
 });
 
 export function parseUpdatedAfter(value) {

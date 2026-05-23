@@ -6,6 +6,7 @@ import { requireBearerToken } from "./auth.js";
 import { createCorsOptions } from "./corsConfig.js";
 import { asyncRoute, sendError } from "./http.js";
 import {
+  bootstrapSchema,
   deviceSchema,
   inventorySchema,
   parseUpdatedAfter,
@@ -45,12 +46,34 @@ async function syncItems(items, schema, upsert) {
   return saved;
 }
 
+async function syncItemsWithSummary(items, schema, upsert) {
+  const saved = [];
+  let stored = 0;
+
+  for (const rawItem of items) {
+    const item = parseBody(schema, rawItem);
+    const result = await upsert(item);
+    if (result.stored) {
+      stored += 1;
+    }
+    saved.push(result.item);
+  }
+
+  return {
+    items: saved,
+    summary: {
+      received: items.length,
+      stored
+    }
+  };
+}
+
 export function createApp({ store, apiToken, corsOrigin = "*" }) {
   const app = express();
 
   app.use(helmet());
   app.use(cors(createCorsOptions({ origin: corsOrigin })));
-  app.use(express.json({ limit: "1mb" }));
+  app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? "10mb" }));
   if (process.env.NODE_ENV !== "test") {
     app.use(morgan("tiny"));
   }
@@ -118,6 +141,43 @@ export function createApp({ store, apiToken, corsOrigin = "*" }) {
         store.upsertInventory(item)
       );
       response.json({ items, serverTime: Date.now() });
+    })
+  );
+
+  app.post(
+    "/api/v1/bootstrap",
+    asyncRoute(async (request, response) => {
+      const body = parseBody(bootstrapSchema, request.body);
+      const tasks = await syncItemsWithSummary(body.tasks, taskSchema, (item) =>
+        store.upsertTask(item)
+      );
+      const inventory = await syncItemsWithSummary(body.inventory, inventorySchema, (item) =>
+        store.upsertInventory(item)
+      );
+
+      let device = null;
+      let deviceSummary = { received: 0, stored: 0 };
+      if (body.device) {
+        const parsedDevice = parseBody(deviceSchema, body.device);
+        const result = await store.upsertDevice(parsedDevice);
+        device = result.item;
+        deviceSummary = {
+          received: 1,
+          stored: result.stored ? 1 : 0
+        };
+      }
+
+      response.json({
+        tasks: tasks.items,
+        inventory: inventory.items,
+        device,
+        summary: {
+          tasks: tasks.summary,
+          inventory: inventory.summary,
+          device: deviceSummary
+        },
+        serverTime: Date.now()
+      });
     })
   );
 

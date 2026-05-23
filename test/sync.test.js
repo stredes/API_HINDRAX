@@ -95,6 +95,40 @@ describe("Hindrax remote sync API", () => {
     expect(cursorTasks.body.items).toEqual([task]);
   });
 
+  it("accepts the Firestore task shape used by devices", async () => {
+    const task = {
+      id: "HNDX-xxxx-task-1",
+      deviceId: "HNDX-xxxx",
+      title: "Comprar tomate",
+      description: "",
+      status: "PENDIENTE",
+      type: "GENERAL",
+      scheduledTime: 1779550000000,
+      locationName: "Bodega",
+      latitude: -33.44,
+      longitude: -70.66,
+      quantity: 4,
+      unit: "kg",
+      inventoryItemId: 1,
+      assignedPeerId: "HNDX-yyyy",
+      checklist: [],
+      deleted: false,
+      updatedAt: 1779550000000
+    };
+
+    await request(app)
+      .post("/api/v1/tasks/sync")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({ items: [task] })
+      .expect(200);
+
+    const response = await request(app)
+      .get("/api/v1/tasks")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(200);
+    expect(response.body.items).toEqual([task]);
+  });
+
   it("keeps the newest task when two devices send the same id", async () => {
     await request(app)
       .put("/api/v1/tasks/task-001")
@@ -164,5 +198,65 @@ describe("Hindrax remote sync API", () => {
       .expect(200);
 
     expect(response.body.items).toEqual([item]);
+  });
+
+  it("bootstraps all local data from a device in one request", async () => {
+    const payload = {
+      device: {
+        deviceId: "tablet-bodega",
+        nickname: "Tablet bodega",
+        appVersion: "2.0.0",
+        updatedAt: 4000
+      },
+      tasks: [
+        {
+          id: "task-bootstrap",
+          deviceId: "tablet-bodega",
+          title: "Tarea local existente",
+          status: "open",
+          updatedAt: 4100
+        }
+      ],
+      inventory: [
+        {
+          id: "inv-bootstrap",
+          deviceId: "tablet-bodega",
+          name: "Item local existente",
+          quantity: 8,
+          unit: "un",
+          updatedAt: 4200
+        }
+      ]
+    };
+
+    const bootstrap = await request(app)
+      .post("/api/v1/bootstrap")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send(payload)
+      .expect(200);
+
+    expect(bootstrap.body.summary).toEqual({
+      tasks: { received: 1, stored: 1 },
+      inventory: { received: 1, stored: 1 },
+      device: { received: 1, stored: 1 }
+    });
+
+    const tasks = await request(app)
+      .get("/api/v1/tasks?updatedAfter=0")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(200);
+    expect(tasks.body.items).toEqual(payload.tasks);
+
+    const inventory = await request(app)
+      .get("/api/v1/inventory?updatedAfter=0")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(200);
+    expect(inventory.body.items).toEqual(payload.inventory);
+
+    const devices = await request(app)
+      .get("/api/v1/devices")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(200);
+    expect(devices.body.items).toEqual([{ id: "tablet-bodega", ...payload.device }]);
   });
 });
