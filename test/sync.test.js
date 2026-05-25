@@ -8,6 +8,7 @@ import { ConfigErrorStore } from "../src/configErrorStore.js";
 import { JsonStore } from "../src/store.js";
 
 const TOKEN = "test-token";
+const ROOT_KEY = "19921351-2";
 
 describe("Hindrax remote sync API", () => {
   let tempDir;
@@ -210,6 +211,37 @@ describe("Hindrax remote sync API", () => {
     });
   });
 
+  it("deletes tasks through the CRUD endpoint", async () => {
+    await request(app)
+      .put("/api/v1/tasks/task-delete-me")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({
+        deviceId: "phone-a",
+        title: "Borrar de Firebase",
+        status: "open",
+        updatedAt: 1000
+      })
+      .expect(200);
+
+    await request(app)
+      .delete("/api/v1/tasks/task-delete-me")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          id: "task-delete-me",
+          deleted: true
+        });
+      });
+
+    const response = await request(app)
+      .get("/api/v1/tasks")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(200);
+
+    expect(response.body.items).toEqual([]);
+  });
+
   it("syncs inventory changes for all connected devices", async () => {
     const item = {
       id: "inv-tomate",
@@ -317,5 +349,122 @@ describe("Hindrax remote sync API", () => {
       .set("Authorization", `Bearer ${TOKEN}`)
       .expect(200);
     expect(devices.body.items).toEqual([{ id: "tablet-bodega", ...payload.device }]);
+  });
+
+  it("rejects admin actions with an invalid root key", async () => {
+    await request(app)
+      .post("/api/v1/admin/reset")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({ rootKey: "wrong", confirm: "RESET_FIREBASE" })
+      .expect(403)
+      .expect((response) => {
+        expect(response.body).toMatchObject({ error: "Forbidden" });
+      });
+  });
+
+  it("deletes linked devices through the root admin endpoint", async () => {
+    await request(app)
+      .post("/api/v1/devices/heartbeat")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({
+        deviceId: "phone-old-hash",
+        nickname: "Telefono viejo",
+        updatedAt: 5000
+      })
+      .expect(200);
+
+    await request(app)
+      .post("/api/v1/admin/devices/delete")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({ rootKey: ROOT_KEY, deviceId: "phone-old-hash" })
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          ok: true,
+          id: "phone-old-hash",
+          deleted: true
+        });
+      });
+
+    const devices = await request(app)
+      .get("/api/v1/devices")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(200);
+    expect(devices.body.items).toEqual([]);
+  });
+
+  it("resets synchronized collections through the root admin endpoint", async () => {
+    await request(app)
+      .post("/api/v1/bootstrap")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({
+        device: {
+          deviceId: "phone-reset",
+          nickname: "Phone reset",
+          updatedAt: 6000
+        },
+        tasks: [
+          {
+            id: "task-reset",
+            deviceId: "phone-reset",
+            title: "Reset me",
+            status: "open",
+            updatedAt: 6100
+          }
+        ],
+        inventory: [
+          {
+            id: "inv-reset",
+            deviceId: "phone-reset",
+            name: "Reset item",
+            quantity: 1,
+            updatedAt: 6200
+          }
+        ]
+      })
+      .expect(200);
+
+    await request(app)
+      .post("/api/v1/chat/sync")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({
+        items: [
+          {
+            id: "chat-reset",
+            deviceId: "phone-reset",
+            peerId: "phone-peer",
+            message: "reset",
+            timestamp: 6300,
+            updatedAt: 6300
+          }
+        ]
+      })
+      .expect(200);
+
+    await request(app)
+      .post("/api/v1/admin/reset")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({ rootKey: ROOT_KEY, confirm: "RESET_FIREBASE" })
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          ok: true,
+          reset: true,
+          deleted: {
+            tasks: 1,
+            inventory: 1,
+            devices: 1,
+            chat: 1
+          }
+        });
+      });
+
+    for (const path of ["tasks", "inventory", "devices", "chat"]) {
+      const response = await request(app)
+        .get(`/api/v1/${path}`)
+        .set("Authorization", `Bearer ${TOKEN}`)
+        .expect(200);
+      expect(response.body.items).toEqual([]);
+    }
   });
 });

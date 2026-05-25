@@ -66,6 +66,16 @@ export const bootstrapSchema = z.object({
   inventory: z.array(z.record(z.unknown())).default([])
 });
 
+export const adminResetSchema = z.object({
+  rootKey: z.string().trim().min(1),
+  confirm: z.literal("RESET_FIREBASE")
+});
+
+export const adminDeleteDeviceSchema = z.object({
+  rootKey: z.string().trim().min(1),
+  deviceId: z.string().trim().min(1)
+});
+
 export function parseUpdatedAfter(value) {
   if (value === undefined || value === null || value === "") {
     return 0;

@@ -93,6 +93,10 @@ export class FirestoreStore {
     return this.upsert("tasks", task);
   }
 
+  async deleteTask(id) {
+    return this.delete("tasks", id);
+  }
+
   async listTasks({ updatedAfter = 0 } = {}) {
     return this.list("tasks", updatedAfter);
   }
@@ -125,6 +129,19 @@ export class FirestoreStore {
     return response.docs.map(fromSnapshot).sort(byUpdatedAtThenId);
   }
 
+  async deleteDevice(id) {
+    return this.delete("devices", id);
+  }
+
+  async resetAll() {
+    const collections = ["tasks", "inventory", "devices", "chat"];
+    const deleted = {};
+    for (const collection of collections) {
+      deleted[collection] = await this.deleteCollection(collection);
+    }
+    return { reset: true, deleted };
+  }
+
   async upsert(collection, rawItem) {
     const item = normalizeTime(rawItem);
     const reference = this.db.collection(collection).doc(docId(item.id));
@@ -149,5 +166,26 @@ export class FirestoreStore {
       .get();
 
     return response.docs.map(fromSnapshot).filter(isValidSyncRecord).sort(byUpdatedAtThenId);
+  }
+
+  async delete(collection, id) {
+    await this.db.collection(collection).doc(docId(id)).delete();
+    return { id, deleted: true };
+  }
+
+  async deleteCollection(collection) {
+    let deleted = 0;
+    while (true) {
+      const snapshot = await this.db.collection(collection).limit(450).get();
+      if (snapshot.empty) {
+        return deleted;
+      }
+      const batch = this.db.batch();
+      for (const document of snapshot.docs) {
+        batch.delete(document.ref);
+        deleted += 1;
+      }
+      await batch.commit();
+    }
   }
 }

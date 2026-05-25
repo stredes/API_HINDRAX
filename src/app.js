@@ -5,7 +5,10 @@ import morgan from "morgan";
 import { requireBearerToken } from "./auth.js";
 import { createCorsOptions } from "./corsConfig.js";
 import { asyncRoute, sendError } from "./http.js";
+import { ADMIN_CONFIRM_FIREBASE_RESET, isValidRootKey, resolveRootKeyHash } from "./rootAuth.js";
 import {
+  adminDeleteDeviceSchema,
+  adminResetSchema,
   bootstrapSchema,
   chatMessageSchema,
   deviceSchema,
@@ -86,6 +89,7 @@ function getServiceStatus(store) {
 
 export function createApp({ store, apiToken, corsOrigin = "*" }) {
   const app = express();
+  const rootKeyHash = resolveRootKeyHash();
 
   app.use(helmet());
   app.use(cors(createCorsOptions({ origin: corsOrigin })));
@@ -119,6 +123,14 @@ export function createApp({ store, apiToken, corsOrigin = "*" }) {
       const task = parseBody(taskSchema, withId(request.params.id, request.body));
       const result = await store.upsertTask(task);
       response.json({ item: result.item, stored: result.stored, serverTime: Date.now() });
+    })
+  );
+
+  app.delete(
+    "/api/v1/tasks/:id",
+    asyncRoute(async (request, response) => {
+      const result = await store.deleteTask(request.params.id);
+      response.json({ ...result, serverTime: Date.now() });
     })
   );
 
@@ -231,6 +243,36 @@ export function createApp({ store, apiToken, corsOrigin = "*" }) {
       const device = parseBody(deviceSchema, request.body);
       const result = await store.upsertDevice(device);
       response.json({ item: result.item, stored: result.stored, serverTime: Date.now() });
+    })
+  );
+
+  app.post(
+    "/api/v1/admin/reset",
+    asyncRoute(async (request, response) => {
+      const body = parseBody(adminResetSchema, request.body);
+      if (!isValidRootKey(body.rootKey, rootKeyHash)) {
+        sendError(response, 403, "Forbidden", "Root key invalid");
+        return;
+      }
+      if (body.confirm !== ADMIN_CONFIRM_FIREBASE_RESET) {
+        sendError(response, 422, "ValidationError", "Admin reset confirmation required");
+        return;
+      }
+      const result = await store.resetAll();
+      response.json({ ok: true, ...result, serverTime: Date.now() });
+    })
+  );
+
+  app.post(
+    "/api/v1/admin/devices/delete",
+    asyncRoute(async (request, response) => {
+      const body = parseBody(adminDeleteDeviceSchema, request.body);
+      if (!isValidRootKey(body.rootKey, rootKeyHash)) {
+        sendError(response, 403, "Forbidden", "Root key invalid");
+        return;
+      }
+      const result = await store.deleteDevice(body.deviceId);
+      response.json({ ok: true, ...result, serverTime: Date.now() });
     })
   );
 

@@ -42,6 +42,10 @@ export class PostgresStore {
     return this.upsert("tasks", task);
   }
 
+  async deleteTask(id) {
+    return this.delete("tasks", id);
+  }
+
   async listTasks({ updatedAfter = 0 } = {}) {
     return this.list("tasks", updatedAfter);
   }
@@ -71,6 +75,27 @@ export class PostgresStore {
 
   async listDevices() {
     return this.list("devices", 0);
+  }
+
+  async deleteDevice(id) {
+    return this.delete("devices", id);
+  }
+
+  async resetAll() {
+    await this.ready;
+    const collections = ["tasks", "inventory", "devices", "chat"];
+    const deleted = {};
+    for (const collection of collections) {
+      const response = await this.pool.query(
+        `
+          DELETE FROM hindrax_sync_records
+          WHERE collection = $1;
+        `,
+        [collection]
+      );
+      deleted[collection] = response.rowCount;
+    }
+    return { reset: true, deleted };
   }
 
   async upsert(collection, rawItem) {
@@ -116,5 +141,17 @@ export class PostgresStore {
       [collection, updatedAfter]
     );
     return response.rows.map(fromRow);
+  }
+
+  async delete(collection, id) {
+    await this.ready;
+    const response = await this.pool.query(
+      `
+        DELETE FROM hindrax_sync_records
+        WHERE collection = $1 AND id = $2;
+      `,
+      [collection, id]
+    );
+    return { id, deleted: response.rowCount > 0 };
   }
 }

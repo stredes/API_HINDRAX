@@ -34,4 +34,12 @@ export class ConfigErrorStore {
   listDevices() {
     this.fail();
   }
+
+  deleteDevice() {
+    this.fail();
+  }
+
+  resetAll() {
+    this.fail();
+  }
 }

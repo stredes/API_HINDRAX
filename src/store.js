@@ -68,6 +68,10 @@ export class JsonStore {
     return this.upsert("tasks", task);
   }
 
+  async deleteTask(id) {
+    return this.delete("tasks", id);
+  }
+
   async listTasks({ updatedAfter = 0 } = {}) {
     return this.list("tasks", updatedAfter);
   }
@@ -100,6 +104,26 @@ export class JsonStore {
     return Object.values(data.devices).sort(byUpdatedAtThenId);
   }
 
+  async deleteDevice(id) {
+    return this.delete("devices", id);
+  }
+
+  async resetAll() {
+    return this.mutate((data) => {
+      const summary = {
+        tasks: Object.keys(data.tasks).length,
+        inventory: Object.keys(data.inventory).length,
+        devices: Object.keys(data.devices).length,
+        chat: Object.keys(data.chat).length
+      };
+      data.tasks = {};
+      data.inventory = {};
+      data.devices = {};
+      data.chat = {};
+      return { reset: true, deleted: summary };
+    });
+  }
+
   async upsert(collection, rawItem) {
     const item = normalizeTime(rawItem);
     return this.mutate((data) => {
@@ -118,5 +142,13 @@ export class JsonStore {
       .filter(isValidSyncRecord)
       .filter((item) => item.updatedAt > updatedAfter)
       .sort(byUpdatedAtThenId);
+  }
+
+  async delete(collection, id) {
+    return this.mutate((data) => {
+      const existed = Boolean(data[collection][id]);
+      delete data[collection][id];
+      return { id, deleted: existed };
+    });
   }
 }
