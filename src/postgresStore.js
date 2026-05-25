@@ -54,6 +54,10 @@ export class PostgresStore {
     return this.upsert("inventory", item);
   }
 
+  async deleteInventory(id) {
+    return this.delete("inventory", id);
+  }
+
   async listInventory({ updatedAfter = 0 } = {}) {
     return this.list("inventory", updatedAfter);
   }

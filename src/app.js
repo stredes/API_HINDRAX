@@ -161,6 +161,14 @@ export function createApp({ store, apiToken, corsOrigin = "*" }) {
     })
   );
 
+  app.delete(
+    "/api/v1/inventory/:id",
+    asyncRoute(async (request, response) => {
+      const result = await store.deleteInventory(request.params.id);
+      response.json({ ...result, serverTime: Date.now() });
+    })
+  );
+
   app.post(
     "/api/v1/inventory/sync",
     asyncRoute(async (request, response) => {

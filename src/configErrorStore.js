@@ -23,6 +23,10 @@ export class ConfigErrorStore {
     this.fail();
   }
 
+  deleteInventory() {
+    this.fail();
+  }
+
   listInventory() {
     this.fail();
   }

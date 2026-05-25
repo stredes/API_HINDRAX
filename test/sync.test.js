@@ -266,6 +266,37 @@ describe("Hindrax remote sync API", () => {
     expect(response.body.items).toEqual([item]);
   });
 
+  it("deletes inventory through the CRUD endpoint", async () => {
+    await request(app)
+      .put("/api/v1/inventory/inv-delete-me")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({
+        deviceId: "phone-a",
+        name: "Inventario duplicado",
+        quantity: 3,
+        updatedAt: 1000
+      })
+      .expect(200);
+
+    await request(app)
+      .delete("/api/v1/inventory/inv-delete-me")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          id: "inv-delete-me",
+          deleted: true
+        });
+      });
+
+    const response = await request(app)
+      .get("/api/v1/inventory")
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .expect(200);
+
+    expect(response.body.items).toEqual([]);
+  });
+
   it("syncs chat messages and lets other devices pull them", async () => {
     const message = {
       id: "HNDX-phone-a-chat-1000-HNDX-phone-b",
